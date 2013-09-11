@@ -14,6 +14,7 @@ use std::str;
 static BACKLOG: uint = 5;
 static PORT:    uint = 4414;
 static IPV4_LOOPBACK: &'static str = "127.0.0.1";
+static mut VISITOR_COUNT: int = 0;
 
 fn new_connection_callback(new_conn :net_tcp::TcpNewConnection, _killch: std::comm::SharedChan<Option<extra::net_tcp::TcpErrData>>)
 {
@@ -33,9 +34,10 @@ fn new_connection_callback(new_conn :net_tcp::TcpNewConnection, _killch: std::co
                         println(fmt!("Receive error: %?", err));
                     },
                     Ok(bytes) => {
+			unsafe {VISITOR_COUNT += 1;}
                         let request_str = str::from_bytes(bytes.slice(0, bytes.len() - 1));
                         println(fmt!("Request received:\n%s", request_str));
-                        let response: ~str = ~
+                        let html_response: ~str = ~
                             "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n
                              <doctype !html><html><head><title>Hello, Rust!</title>
                              <style>body { background-color: #111; color: #FFEEAA }
@@ -44,7 +46,8 @@ fn new_connection_callback(new_conn :net_tcp::TcpNewConnection, _killch: std::co
                              <body>
                              <h1>Greetings, Rusty!</h1>
                              </body></html>\r\n";
-
+			let visitor_response: ~str = unsafe {fmt!("Number of requests: %i", VISITOR_COUNT)};
+			let response = html_response + visitor_response;
                         net_tcp::write(&sock, response.as_bytes_with_null_consume());
                     },
                 };
